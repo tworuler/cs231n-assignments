@@ -34,13 +34,17 @@ def svm_loss_naive(W, X, y, reg):
       margin = scores[j] - correct_class_score + 1 # note delta = 1
       if margin > 0:
         loss += margin
+        dW[:, j] += X[i]
+        dW[:, y[i]] -= X[i]
 
   # Right now the loss is a sum over all training examples, but we want it
   # to be an average instead so we divide by num_train.
   loss /= num_train
+  dW /= num_train
 
   # Add regularization to the loss.
   loss += 0.5 * reg * np.sum(W * W)
+  dW += reg * W
 
   #############################################################################
   # TODO:                                                                     #
@@ -69,7 +73,14 @@ def svm_loss_vectorized(W, X, y, reg):
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  pass
+  num_train = X.shape[0]
+  scores = X.dot(W)
+  correct_class_scores = scores[np.arange(num_train), y]
+  correct_class_scores = np.reshape(correct_class_scores, (num_train, 1))
+  margins = np.maximum(0, scores - correct_class_scores + 1)
+  margins[np.arange(num_train), y] = 0
+  loss += np.sum(margins) / num_train
+  loss += 2 * reg * np.sum(W * W)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -84,7 +95,18 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+  D, C = W.shape
+  # X_temp = np.reshape(X, (num_train, D, 1))
+  # margins_temp = np.reshape(margins, (num_train, 1, C))
+  # dW += np.sum(X_temp * margins_temp, axis=0)
+  for j in xrange(C):
+    dW[:, j] += np.sum(X[margins[:, j] > 0], axis=0)
+  for j in xrange(C):
+    for i in xrange(num_train):
+      if margins[i, j] > 0:
+        dW[:, y[i]] -= X[i]
+  dW /= num_train
+  dW += reg * W
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
