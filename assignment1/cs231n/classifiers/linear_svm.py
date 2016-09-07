@@ -95,16 +95,9 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  D, C = W.shape
-  # X_temp = np.reshape(X, (num_train, D, 1))
-  # margins_temp = np.reshape(margins, (num_train, 1, C))
-  # dW += np.sum(X_temp * margins_temp, axis=0)
-  for j in xrange(C):
-    dW[:, j] += np.sum(X[margins[:, j] > 0], axis=0)
-  for j in xrange(C):
-    for i in xrange(num_train):
-      if margins[i, j] > 0:
-        dW[:, y[i]] -= X[i]
+  dS = np.array(margins > 0, dtype=np.int64)
+  dS[range(num_train), y] -= np.sum(dS, axis=1)
+  dW = X.T.dot(dS)
   dW /= num_train
   dW += reg * W
   #############################################################################
