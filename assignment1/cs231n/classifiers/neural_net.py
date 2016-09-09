@@ -74,7 +74,9 @@ class TwoLayerNet(object):
     # Store the result in the scores variable, which should be an array of      #
     # shape (N, C).                                                             #
     #############################################################################
-    pass
+    hidden_scores = X.dot(W1) + b1
+    hidden_scores[hidden_scores < 0] = 0
+    scores = hidden_scores.dot(W2) + b2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -92,7 +94,12 @@ class TwoLayerNet(object):
     # classifier loss. So that your results match ours, multiply the            #
     # regularization loss by 0.5                                                #
     #############################################################################
-    pass
+    exp_scores = np.exp(scores)
+    probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+    loss = np.sum(-np.log(probs[range(N), y]))
+    loss /= N
+    loss += 0.5 * reg * np.sum(W1 * W1)
+    loss += 0.5 * reg * np.sum(W2 * W2)
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
@@ -104,7 +111,26 @@ class TwoLayerNet(object):
     # and biases. Store the results in the grads dictionary. For example,       #
     # grads['W1'] should store the gradient on W1, and be a matrix of same size #
     #############################################################################
-    pass
+    dscore = probs
+    dscore[range(N), y] -= 1
+    dW2 = hidden_scores.T.dot(dscore)
+    dW2 /= N
+    db2 = np.sum(dscore, axis=0)
+    db2 /= N
+    dhidden_score = dscore.dot(W2.T)
+    dhidden_score[hidden_scores <= 0] = 0
+    dW1 = X.T.dot(dhidden_score)
+    dW1 /= N
+    db1 = np.sum(dhidden_score, axis=0)
+    db1 /= N
+
+    dW2 += reg * W2
+    dW1 += reg * W1
+
+    grads['W1'] = dW1
+    grads['b1'] = db1
+    grads['W2'] = dW2
+    grads['b2'] = db2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
