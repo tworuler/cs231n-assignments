@@ -199,6 +199,11 @@ class FullyConnectedNet(object):
     for i in xrange(self.num_layers):
       self.params['W' + str(i + 1)] = W[i]
       self.params['b' + str(i + 1)] = b[i]
+
+    if use_batchnorm:
+      for i, hidden_dim in enumerate(hidden_dims):
+        self.params['gamma' + str(i + 1)] = np.ones(hidden_dim)
+        self.params['beta' + str(i + 1)] = np.zeros(hidden_dim)
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -241,7 +246,7 @@ class FullyConnectedNet(object):
       self.dropout_param['mode'] = mode   
     if self.use_batchnorm:
       for bn_param in self.bn_params:
-        bn_param[mode] = mode
+        bn_param['mode'] = mode
 
     scores = None
     ############################################################################
@@ -258,17 +263,20 @@ class FullyConnectedNet(object):
     ############################################################################
     W = []
     b = []
-    for k, v in sorted(self.params.items()):
-      if 'W' in k:
-        W.append(v)
-      elif 'b' in k:
-        b.append(v)
+    for i in xrange(self.num_layers):
+      W.append(self.params['W' + str(i + 1)])
+      b.append(self.params['b' + str(i + 1)])
 
     out = X
     caches = []
-    for i in xrange(len(W) - 1):
+    for i in xrange(self.num_layers - 1):
       out, cache = affine_forward(out, W[i], b[i])
       caches.append(cache)
+      if self.use_batchnorm:
+        beta = self.params['beta' + str(i + 1)]
+        gamma = self.params['gamma' + str(i + 1)]
+        out, cache = batchnorm_forward(out, gamma, beta, self.bn_params[i])
+        caches.append(cache)
       out, cache = relu_forward(out)
       caches.append(cache)
     scores, cache = affine_forward(out, W[-1], b[-1])
@@ -304,6 +312,8 @@ class FullyConnectedNet(object):
     dout, dW[-1], db[-1] = affine_backward(dout, caches.pop())
     for i in range(self.num_layers - 1)[::-1]:
       dout = relu_backward(dout, caches.pop())
+      if self.use_batchnorm:
+        dout, grads['gamma'+str(i+1)], grads['beta'+str(i+1)] = batchnorm_backward(dout, caches.pop())
       dout, dW[i], db[i] = affine_backward(dout, caches.pop())
 
     for i in xrange(self.num_layers):
