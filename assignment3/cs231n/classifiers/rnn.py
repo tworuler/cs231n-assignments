@@ -135,7 +135,27 @@ class CaptioningRNN(object):
     # defined above to store loss and gradients; grads[k] should give the      #
     # gradients for self.params[k].                                            #
     ############################################################################
-    pass
+    h0, cache0 = affine_forward(features, W_proj, b_proj)
+    out, cache1 = word_embedding_forward(captions_in, W_embed)
+    if self.cell_type == 'rnn':
+      out, cache2 = rnn_forward(out, h0, Wx, Wh, b)
+    elif self.cell_type == 'lstm':
+      pass
+    out, cache3 = temporal_affine_forward(out, W_vocab, b_vocab)
+    loss, dout = temporal_softmax_loss(out, captions_out, mask)
+    
+    dout, dW_vocab, db_vocab = temporal_affine_backward(dout, cache3)
+    if self.cell_type == 'rnn':
+      dout, dh0, dWx, dWh, db = rnn_backward(dout, cache2)
+    elif self.cell_type == 'lstm':
+      pass
+    dW_embed = word_embedding_backward(dout, cache1)
+    _, dW_proj, db_proj = affine_backward(dh0, cache0)
+    
+    grads['W_proj'], grads['b_proj'] = dW_proj, db_proj
+    grads['W_embed'] = dW_embed
+    grads['Wx'], grads['Wh'], grads['b'] = dWx, dWh, db
+    grads['W_vocab'], grads['b_vocab'] = dW_vocab, db_vocab
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
@@ -197,7 +217,18 @@ class CaptioningRNN(object):
     # functions; you'll need to call rnn_step_forward or lstm_step_forward in #
     # a loop.                                                                 #
     ###########################################################################
-    pass
+    h, _ = affine_forward(features, W_proj, b_proj)
+    word = self._start
+    for t in xrange(max_length):
+      x, _ = word_embedding_forward(word, W_embed)
+      if self.cell_type == 'rnn':
+        h, _ = rnn_step_forward(x, h, Wx, Wh, b)
+      elif self.cell_type == 'lstm':
+        pass
+      score, _ = affine_forward(h, W_vocab, b_vocab)
+      word = np.argmax(score, axis=1)
+      
+      captions[:, t] = word
     ############################################################################
     #                             END OF YOUR CODE                             #
     ############################################################################
