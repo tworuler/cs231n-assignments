@@ -1,2 +1,2 @@
 # cs231n-assignments
-cs231n note: http://cs231n.github.io/
+cs231n notes: http://cs231n.github.io/
